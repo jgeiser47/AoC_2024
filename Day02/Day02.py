@@ -21,10 +21,7 @@ def isLineSafe(line):
         diff.append(line[i+1] - line[i])
 
     # If they're either all ascending/descending in the appropriate range, then true
-    if all([1 <= x <= 3 for x in diff]) or all([-3 <= x <= -1 for x in diff]):
-        return True
-    else:
-        return False
+    return all([1 <= x <= 3 for x in diff]) or all([-3 <= x <= -1 for x in diff])
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 def task_1(inputs):
@@ -40,7 +37,7 @@ def task_1(inputs):
     return out
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-def ascendingIsSafe(line):
+def partTwoIsSafe(line):
 
     # Prune off any cases with multiple instances of repeat values
     if abs(len(set(line)) - len(line)) > 1:
@@ -52,32 +49,7 @@ def ascendingIsSafe(line):
         diff.append(line[i+1] - line[i])
 
     # If all of our differences are in the appropriate range, then already safe
-    if all([1 <= x <= 3 for x in diff]):
-        return True
-
-    # Otherwise, lets just brute force removing a single value at a time and
-    # see if any of those combinations are safe
-    for i in range(len(line)):
-        if isLineSafe(line[:i] + line[i+1:]):
-            return True
-
-    # If nothing is safe at this point, return false
-    return False
-
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-def descendingIsSafe(line):
-
-    # Prune off any cases with multiple instances of repeat values
-    if abs(len(set(line)) - len(line)) > 1:
-        return False
-
-    # Get our differences between each value
-    diff = []
-    for i in range(len(line)-1):
-        diff.append(line[i+1] - line[i])
-
-    # If all of our differences are in the appropriate range, then already safe
-    if all([-3 <= x <= -1 for x in diff]):
+    if all([1 <= x <= 3 for x in diff]) or all([-3 <= x <= -1 for x in diff]):
         return True
 
     # Otherwise, lets just brute force removing a single value at a time and
@@ -97,7 +69,7 @@ def task_2(inputs):
     out = 0
     for input in inputs:
         line = [int(x) for x in input.strip().split(' ')]
-        if ascendingIsSafe(line) or descendingIsSafe(line):
+        if partTwoIsSafe(line):
             out += 1
 
     return out
