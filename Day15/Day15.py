@@ -4,7 +4,7 @@
 '''
 
 from pathlib import Path
-from typing import List, Tuple, Dict
+from typing import List, Tuple
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 def read_input(infile):
@@ -30,6 +30,10 @@ class Coord():
         elif move == '>': return Coord(self.r, self.c + 1)
         elif move == '<': return Coord(self.r, self.c - 1)
         else:             raise SystemError()
+
+    def getOtherHalf(self, val:str):
+        ''' For part 2: get the coordinate of the other half of the box '''
+        return self.getNeigh('>') if val == '[' else self.getNeigh('<')
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 class Grid():
@@ -78,7 +82,7 @@ class Grid():
 
         # These should always be true, might be a bug in our logic if not
         assert self.getValAt(toCoord) == '.'
-        assert self.getValAt(fromCoord) in {'@', 'O'}
+        assert self.getValAt(fromCoord) in {'@', 'O', '[', ']'}
 
         # Reset location of objects accordingly 
         self.setValAt(toCoord, self.getValAt(fromCoord))
@@ -103,7 +107,7 @@ class Grid():
     
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 def parseInputs(inputs:List[str], part2=False) -> Tuple[Grid, str]:
-    ''' Helper for parsing our inputs into a Grid object and a lit of moves '''
+    ''' Helper for parsing our inputs into a Grid object and a list of moves '''
 
     iBreak = [i for i,input in enumerate(inputs) if len(input) == 0][0]
     grid = Grid(inputs[:iBreak], part2=part2)
@@ -150,13 +154,15 @@ def attemptMove(grid:Grid, move:str):
     raise SystemError()
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-def getScore(grid:Grid) -> int:
+def getScore(grid:Grid, part2=False) -> int:
     ''' Return the "score" of the grid (after all moves are completed) '''
+
+    boxStr = 'O' if not part2 else '['
 
     out = 0
     for r in range(grid.M):
         for c in range(grid.N):
-            if grid.getValAt(Coord(r,c)) == 'O':
+            if grid.getValAt(Coord(r,c)) == boxStr:
                 out += 100 * r + c
 
     return out
@@ -173,8 +179,8 @@ def task_1(inputs):
     return getScore(grid)
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-def attemptMove2(grid:Grid, move:str):
-    ''' Attempt our move (for part 1) only '''
+def attemptHorizMove(grid:Grid, move:str):
+    ''' Attempt a horizontal move (for part 2) only '''
 
     # We need to make a stack of potential coordinates to be moved
     stack = []
@@ -188,7 +194,7 @@ def attemptMove2(grid:Grid, move:str):
     stack.append(nextCoord)
 
     # As long as we've got a string of boxes, keep checking next location in same direction
-    while grid.getValAt(nextCoord) == 'O':
+    while grid.getValAt(nextCoord) in {'[', ']'}:
         nextCoord = nextCoord.getNeigh(move)
         stack.append(nextCoord)
 
@@ -211,23 +217,79 @@ def attemptMove2(grid:Grid, move:str):
     raise SystemError()
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+def attemptVertMove(grid:Grid, move:str):
+    ''' Attempt a vertical move (part 2 only) '''
+
+    # Stack of lists of potential coordinates to be moved
+    stack = []
+
+    # Current robot's location
+    robotCoord = grid.getRobot()
+    stack.append([robotCoord])
+
+    # Each element in the stack will be it's own list of Coords for a given row index
+    # If we visit a row of only empty spaces -> then we'll end up adding an empty list to our stack
+    while len(stack[-1]) > 0:
+        currRow = stack[-1]
+        nextRow = []
+
+        # Now for each element in the last row we visited, check each neighbor to the N or S
+        for coord in currRow:
+            neighbor = coord.getNeigh(move)
+
+            # If our neighbor is part of a box, add both parts of the box to our list
+            if grid.getValAt(neighbor) in {'[', ']'}:
+                nextRow.append(neighbor)
+                nextRow.append(neighbor.getOtherHalf(grid.getValAt(neighbor)))
+
+            # If any part of our path is blocked by a wall, return immediately cuz we can't move!
+            if grid.getValAt(neighbor) == '#':
+                return
+
+        # Now append our most recently visited row to the stack
+        stack.append(nextRow)
+
+    # Get rid of last element of stack, which should be an empty list (i.e., all empty spaces)
+    stack.pop()
+
+    # Now we need to actually complete our move
+    while len(stack) > 0:
+        currRow = stack.pop()
+
+        # Potential for duplication when adding values in, just convert to stack to de-duplicate
+        currRow = set([x.toTuple() for x in currRow])
+        for coordTuple in currRow:
+            coord = Coord(*coordTuple)
+
+            # Use our Grid helper function to actually complete this move
+            moveFromCoord = coord
+            moveToCoord = moveFromCoord.getNeigh(move)
+            grid.moveFromTo(moveFromCoord, moveToCoord)
+
+    # Yay we're done!
+    return
+
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 def task_2(inputs):
     ''' Solve part 2 '''
 
     # Do the thing (part 2 style)!
     grid, moves = parseInputs(inputs, part2=True)
     for move in moves:
-        attemptMove2(grid, move)
+        if move in {'<', '>'}:
+            attemptHorizMove(grid, move)
+        else:
+            attemptVertMove(grid, move)
 
-    return getScore(grid)
+    return getScore(grid, part2=True)
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 def main():
 
-    infile = Path(__file__).parent / 'sample.txt'
+    infile = Path(__file__).parent / 'input.txt'
 
-    # inputs = read_input(infile)
-    # print(task_1(inputs))
+    inputs = read_input(infile)
+    print(task_1(inputs))
 
     inputs = read_input(infile)
     print(task_2(inputs))
